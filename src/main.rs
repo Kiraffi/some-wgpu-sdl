@@ -1,9 +1,8 @@
 use std::iter;
-
+ 
 extern crate futures;
 extern crate sdl2;
 extern crate wgpu;
-
 
 use futures::executor::block_on;
 
@@ -109,7 +108,7 @@ fn main() -> Result<(), String> {
 			alpha_to_coverage_enabled: false,
 		},
 	});
- 
+
 	let mut event_pump = sdl_context.event_pump()?;
     'running: loop 
 	{

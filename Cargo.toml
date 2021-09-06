@@ -13,3 +13,22 @@ futures = { version = "0.3.15" }
 name = "test_wgpu_sdl"
 path = "src/main.rs"
 
+# Explicitly specify what our profiles use.
+[profile.dev]
+opt-level = 0
+debug = true
+rpath = false
+lto = "off"
+debug-assertions = false
+codegen-units = 8
+panic = "abort"
+incremental = false
+#
+[profile.release]
+opt-level = 0
+debug = true
+rpath = false
+lto = "off"
+debug-assertions = false
+panic = "abort"
+incremental = false
