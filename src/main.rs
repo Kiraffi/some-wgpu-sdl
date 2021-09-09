@@ -1,8 +1,8 @@
 use std::iter;
  
-extern crate futures;
+//extern crate futures;
 extern crate sdl2;
-extern crate wgpu;
+extern crate wgpu; 
 
 use futures::executor::block_on;
 
@@ -24,7 +24,7 @@ fn main() -> Result<(), String> {
 
 	// The instance is a handle to our GPU
 	// BackendBit::PRIMARY => Vulkan + Metal + DX12 + Browser WebGPU
-	let instance = wgpu::Instance::new(wgpu::BackendBit::VULKAN);
+	let instance = wgpu::Instance::new(wgpu::Backends::VULKAN);
 	let surface = unsafe { instance.create_surface(&window) };
 	let adapter = block_on(instance
 		.request_adapter(&wgpu::RequestAdapterOptions {
@@ -46,19 +46,19 @@ fn main() -> Result<(), String> {
 			None, // Trace path
 		)
 		).unwrap();
-
+/*
 	let mut sc_desc = wgpu::SwapChainDescriptor {
-		usage: wgpu::TextureUsage::RENDER_ATTACHMENT,
+		usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
 		format: wgpu::TextureFormat::Bgra8UnormSrgb,
 		width: width,
 		height: height,
 		present_mode: wgpu::PresentMode::Fifo,
 	};
-	let mut swap_chain = device.create_swap_chain(&surface, &sc_desc);
+	*/
+	//let mut swap_chain = device.create_swap_chain(&surface, &sc_desc);
 
 	let shader = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
 		label: Some("Shader"),
-		flags: wgpu::ShaderFlags::all(),
 		source: wgpu::ShaderSource::Wgsl(include_str!("shader.wgsl").into()),
 	});
 
@@ -68,6 +68,8 @@ fn main() -> Result<(), String> {
 			bind_group_layouts: &[],
 			push_constant_ranges: &[],
 		});
+
+	let swapchain_format = surface.get_preferred_format(&adapter).unwrap();
 
 	let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
 		label: Some("Render Pipeline"),
@@ -80,14 +82,7 @@ fn main() -> Result<(), String> {
 		fragment: Some(wgpu::FragmentState {
 			module: &shader,
 			entry_point: "main",
-			targets: &[wgpu::ColorTargetState {
-				format: sc_desc.format,
-				blend: Some(wgpu::BlendState {
-					color: wgpu::BlendComponent::REPLACE,
-					alpha: wgpu::BlendComponent::REPLACE,
-				}),
-				write_mask: wgpu::ColorWrite::ALL,
-			}],
+			targets: &[swapchain_format.into()],
 		}),
 		primitive: wgpu::PrimitiveState {
 			topology: wgpu::PrimitiveTopology::TriangleList,
@@ -109,6 +104,17 @@ fn main() -> Result<(), String> {
 		},
 	});
 
+
+	let mut config = wgpu::SurfaceConfiguration {
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+        format: swapchain_format,
+        width: width,
+        height: height,
+        present_mode: wgpu::PresentMode::Mailbox,
+    };
+
+    surface.configure(&device, &config);
+
 	let mut event_pump = sdl_context.event_pump()?;
     'running: loop 
 	{
@@ -117,13 +123,14 @@ fn main() -> Result<(), String> {
             match event 
 			{
                 Event::Window {
-                    win_event: WindowEvent::Resized(width, height),
-                    ..
-                } => {
-                    sc_desc.width = width as u32;
-                    sc_desc.height = height as u32;
-                    swap_chain = device.create_swap_chain(&surface, &sc_desc);
-                }
+                    win_event:WindowEvent::Resized(width, height),
+					..
+				} => {
+					// Reconfigure the surface with the new size
+					config.width = width as u32;
+					config.height = height as u32;
+					surface.configure(&device, &config);
+				}
                 Event::Quit { .. }
                 | Event::KeyDown {
                     keycode: Some(Keycode::Escape),
@@ -135,9 +142,15 @@ fn main() -> Result<(), String> {
             }
         }
 
+		let frame = surface
+		.get_current_frame()
+		.expect("Failed to acquire next swap chain texture")
+		.output;
 
-
-		let frame = swap_chain.get_current_frame().unwrap().output;
+		let view = frame
+		.texture
+		.create_view(&wgpu::TextureViewDescriptor::default());
+		//let frame = swap_chain.get_current_frame().unwrap().output;
 
         let mut encoder = device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -148,7 +161,7 @@ fn main() -> Result<(), String> {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Render Pass"),
                 color_attachments: &[wgpu::RenderPassColorAttachment {
-                    view: &frame.view,
+                    view: &view,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color {
