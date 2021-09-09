@@ -4,7 +4,7 @@ use std::iter;
 extern crate sdl2;
 extern crate wgpu; 
 
-use futures::executor::block_on;
+use pollster::block_on;
 
 use sdl2::event::{Event, WindowEvent};
 use sdl2::keyboard::Keycode;
