@@ -1,1 +1,1 @@
-# rust-wgpu-sdl
+# some-wgpu-sdl
